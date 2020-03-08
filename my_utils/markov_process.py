@@ -1,4 +1,6 @@
-''' Week 1: MP, MRP, MDP class definition
+''' 
+Week 1: MP, MRP, MDP class definition
+Author: Raphael Abbou
 '''
 
 import numpy as np
@@ -14,13 +16,7 @@ class MP:
         self.states = states
         self.P = P
         self.nb_states = len(self.states)
-    
-        #Mapping of states and indexes
-        self.state_to_ind = {}
-        self.ind_to_state = {}
-        for ind, s in enumerate(self.states):
-            self.state_to_ind[s] = ind
-            self.ind_to_state[ind] = s
+
 
     def comput_stationary_dist(self):
         op = (np.identity(self.nb_states) - self.P)
@@ -49,46 +45,63 @@ class MRP(MP):
         except:
             raise Exception('Transition and Rewards matrix should have same dimensions')
 
-        self.precomputation()
-
-    def precomputation(self):
         self.R = np.zeros(self.nb_states)
-        for ind in self.ind_to_state.keys():
-            self.R[ind] = self.P[ind].dot(self.rewards[ind])
-        self.V = np.linalg.inv(np.identity(self.nb_states) - self.gamma*self.P).dot(self.R)
+        for state in self.states:
+            self.R[state] = self.P[state].dot(self.rewards[state])
         
     def get_reward(self, state, next_state):
-        return self.rewards[self.state_to_ind[state], self.state_to_ind[next_state]]
+        return self.rewards[state, next_state]
     
-    def get_expected_reward(self, state):
-        return self.R[self.state_to_ind[state]]
+    def get_R(self, state):
+        return self.R[state]
+ 
+    def get_V(self):
+        try:
+            return self.V
+        except:
+            self.V = np.linalg.inv(np.identity(self.nb_states) - self.gamma*self.P).dot(self.R)
+            return self.V
     
-    def get_value_function(self, state):
-        return self.V[self.state_to_ind[state]]
+    def get_state_V(self, state):
+        try:
+            return self.V[state]
+        except:
+            self.V = np.linalg.inv(np.identity(self.nb_states) - self.gamma*self.P).dot(self.R)
+            return self.V[state]
     
 
-class MDP(MRP):
-    def __init__(self, states, policies, rewards, actions, gamma = 0.99):
+class MDP():
+    def __init__(self, states, action2P, rewards, actions, gamma = 0.99):
         self.states = states
-        self.policies = policies
+        self.action2P = action2P
         self.rewards = rewards
         self.actions = actions
         self.gamma = gamma
+        
+        self.nb_states = len(self.states)
+        
+        self.mrps = dict() #maps policy ids to mrp
+        
+    def get_related_MRP(self, det_policy):
+        try:
+            return self.mrps[det_policy.id]
+        except: 
+            P = det_policy.get_P()
+            self.mrps[det_policy.id] = MRP(self.states, P, self.rewards, self.gamma)
+            return self.mrps[det_policy.id]
 
-    def get_related_MRP(self, policy):
-        ''' Policy are mapping from space of states
-            to a distribution of proba on states
-            Policy rep = sto. matrix |S|*|S|
-            Each lign is a proba of dist.
-        '''
-        if policy not in self.policies:
-            raise Exception('Unkown policy')
+    def get_Qvalue(self, policy, state, action):
+        mrp = self.get_related_MRP(policy)
+        return mrp.get_R(state) + mrp.gamma*np.dot(mrp.P, mrp.V)[state]
             
-        return MRP(self.states, self.policies[policy], self.rewards, self.gamma)
-
+    def get_Rvalue(self, state, action):
+        return self.action2P[action][state].dot(self.rewards[state])
+        
+        
 if __name__ == '__main__':
     #MRP example
-    states = ['T','H', 'HH']
+    #states = ['T','H', 'HH']
+    states = [0,1,2]
     P = np.array([[1/2, 1/2, 0], 
                   [1/2, 0, 1/2], 
                   [0, 0, 1]])
@@ -100,13 +113,4 @@ if __name__ == '__main__':
     my_MP = MP(states, P)
     my_MRP = MRP(states, P, rewards)
     
-    actions = ['toss', 'stay']
-    policies = {'toss': np.array([[1/2, 1/2, 0], [1/2, 0, 1/2], [0, 0, 1]]),
-                'stay': np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])}
-    
-    my_MDP = MDP(states, policies, rewards, actions)
-    toss_MRP = my_MDP.get_related_MRP('toss')
-    
-    print(toss_MRP.get_expected_reward('T'))
-    print(toss_MRP.get_value_function('H'))
-    print(toss_MRP.get_stationary_dist())
+    my_MRP.get_V()
