@@ -94,6 +94,9 @@ if __name__ == "__main__":
     actions = ['toss', 'stay']
     action2P = {'toss': np.array([[1/2, 1/2, 0], [1/2, 0, 1/2], [0, 0, 1]]),
                 'stay': np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])}
+    action2rewards = {'toss': rewards,
+                      'stay': rewards}
+    
     
     Rmapping = {0: {'toss': 1/3, 'stay': 2/3},
                1: {'toss': 2/3, 'stay': 1/3},
@@ -105,11 +108,11 @@ if __name__ == "__main__":
                2: {'toss':1}
               }
     
-    policy = DetPolicy(action2P, mapping)
+    policy = DetPolicy(action2P, action2rewards, mapping)
     policy.get_P()
     
-    mdp = MDP(states, action2P, rewards, actions)
+    mdp = MDP(states, action2P, action2rewards, actions)
     toss_MRP = mdp.get_related_MRP(policy)
     
-    is_improved, P = policy_iteration(mdp, policy)
-    is_improved, P = value_iteration(mdp, policy)
+    is_improved, opt_policy = policy_iteration(mdp, policy)
+    is_improved, opt_policy = value_iteration(mdp, policy)

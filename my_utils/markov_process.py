@@ -71,10 +71,10 @@ class MRP(MP):
     
 
 class MDP():
-    def __init__(self, states, action2P, rewards, actions, gamma = 0.99):
+    def __init__(self, states, action2P, action2rewards, actions, gamma = 0.99):
         self.states = states
         self.action2P = action2P
-        self.rewards = rewards
+        self.action2rewards = action2rewards
         self.actions = actions
         self.gamma = gamma
         
@@ -87,7 +87,8 @@ class MDP():
             return self.mrps[det_policy.id]
         except: 
             P = det_policy.get_P()
-            self.mrps[det_policy.id] = MRP(self.states, P, self.rewards, self.gamma)
+            rewards = det_policy.get_rewards()
+            self.mrps[det_policy.id] = MRP(self.states, P, rewards, self.gamma)
             return self.mrps[det_policy.id]
 
     def get_Qvalue(self, policy, state, action):
@@ -95,9 +96,35 @@ class MDP():
         return mrp.get_R(state) + mrp.gamma*np.dot(mrp.P, mrp.V)[state]
             
     def get_Rvalue(self, state, action):
-        return self.action2P[action][state].dot(self.rewards[state])
+        return self.action2P[action][state].dot(self.action2rewards[action][state])
+
+    def get_transition_probas(self, state, action):
+        return self.action2P[action][state]
+    
+    def IsEndState(self, state):
+        ''' This method is supposed to be overriden
+            For each particular instance of the MDP,
+            in order to define End State
+        '''
+        return False
+    
+    def succAndProbReward(self, state, action):
+        ''' Given a |state| and |action|, return a list of (newState, prob, reward) tuples
+            corresponding to the states reachable from |state| when taking |action|.
+        '''
+        if self.IsEndState(state):
+            return []
         
+        transitions = []
+        trans_probas = self.get_transition_probas(state, action)
+        for next_state, prob in enumerate(trans_probas):
+            reward = self.action2rewards[action][state, next_state]
+            transitions.append((next_state, prob, reward))
         
+        return transitions
+        
+
+     
 if __name__ == '__main__':
     #MRP example
     #states = ['T','H', 'HH']
@@ -109,6 +136,7 @@ if __name__ == '__main__':
     rewards = np.array([[1, 1, 1], 
                         [1, 1, 1], 
                         [1, 1, 0]])
+    
     
     my_MP = MP(states, P)
     my_MRP = MRP(states, P, rewards)
