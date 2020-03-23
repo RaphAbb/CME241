@@ -9,7 +9,7 @@ os.chdir("../")
 from my_utils.markov_process import MP, MRP, MDP
 from my_utils.policy import RandPolicy, DetPolicy
 
-class FrogMDP(MDP):
+class RWMDP(MDP):
     def __init__(self, n, states, action2P, action2rewards, actions):
         super().__init__(states, action2P, action2rewards, actions)
         self.n = n
@@ -22,8 +22,8 @@ class FrogMDP(MDP):
         '''
         if (state==self.n) or (state == 0):
             return True
-    
-def f(i, j, n):
+        
+def g(i, j, n):
     if (i==0):
         if (j==0):
             return 1
@@ -35,50 +35,42 @@ def f(i, j, n):
         else:
             return 0
     elif i == j+1:
-        return i/n
+        return 1/2
     elif i == j-1:
-        return (n-i)/n
+        return 1/2
     else:
         return 0
-    
-def generate_transitions_rewards(n):
-    P_A = np.array([[f(i,j,n) for j in range(n+1)] for i in range(n+1)])
-    
-    l1, l2, l = [0]*(n+1), [0]*(n+1), [1/n]*(n+1)
-    l1[0] = 1
-    l2[n] = 1
-    
-    P_B = np.array([[l1] + [l]*(n-2) + [l2]]).squeeze(0)
-    for i in range(1, n, 1):
-        P_B[i,i] = 0
-    
+
+def GetRWPolicyRewards(n):
+    ''' Random Walk
+    '''
     rewards = np.zeros((n+1, n+1))
     rewards[:,0] = 0
     rewards[:,n] = 1
     
-    return P_A, P_B, rewards
+    P = np.array([[g(i,j,n) for j in range(n+1)] for i in range(n+1)])
+    
+    action2P = {'walk': P}
+    action2rewards = {'walk': rewards}
+    
+    mapping = {i: {'walk':1} for i in range(n)}
+    
+    
+    RWPolicy = DetPolicy(action2P, action2rewards, mapping)
+    
+    return RWPolicy, rewards
 
-def get_frog_mdp(n):
-    P_A, P_B, rewards = generate_transitions_rewards(n)
+def get_rw_mdp(n):
+    policy, rewards = GetRWPolicyRewards(n)
     
     states = [i for i in range(n+1)]
     
-    actions = ['A', 'B']
-    
-    action2P = {'A': P_A,
-                'B': P_B}
-    action2rewards = {'A': rewards,
-                      'B': rewards}
-    
-    mapping = {i: {'A':1} for i in range(n)}
-    
-    
-    a_policy = DetPolicy(action2P, action2rewards, mapping)
-    
-    mdp = FrogMDP(n, states, action2P, action2rewards, actions)
+    actions = ['walk']    
+    mdp = RWMDP(n, states, policy.action2P, policy.action2rewards, actions)
 
-    return mdp, a_policy
+    return mdp, policy
 
 if __name__ == "__main__":
-    n = 10
-    mdp, a_policy = get_frog_mdp(n)
+    n = 50
+    mdp, policy = get_rw_mdp(n)
+    print(mdp.action2rewards['walk'])

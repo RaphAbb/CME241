@@ -35,6 +35,7 @@ def GetValueTD(mdp, rl: TD, nIter=20):
         
     return rl.V, rl.Vhisto
 
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     
